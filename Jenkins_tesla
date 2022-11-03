@@ -1,0 +1,36 @@
+node{
+          def mavenHome = tool name: "maven3.8.6"
+      stage('1cloneCode'){git "https://github.com/Richnet7/maven-web-application.git"}
+
+      stage('2Test&Build'){
+      sh "${mavenHome}/bin/mvn clean package"}
+      
+      stage('3code&Quality'){
+      sh "${mavenHome}/bin/mvn clean sonar:sonar"}
+
+      stage('4uploadArtifacts'){
+      sh "${mavenHome}/bin/mvn deploy"}
+      http://54.166.178.171:8081/repository/Access-fe-snapshots/
+      http://54.166.178.171:8081/repository/Access-fe-releases/
+
+      stage('5deploy2UAT'){
+      sh "echo 'deploy to UAT' "
+      deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://100.24.37.217:8080/')], contextPath: null, war: 'target/*war'}
+
+      stage('6approvalGate')
+      sh "echo 'ready for review' "
+      timeout(time:5, unit: 'DAYS') {
+      input message: 'Application ready for deployment, please review and approve'} 
+
+      stage('7deploy2Prod'){
+      deploy adapters: [tomcat9(credentialsId: 'tomcat-credentials', path: '', url: 'http://100.24.37.217:8080/')], contextPath: null, war: 'target/*war'}
+
+      stage('8emailNotification'){
+      emailext body: '''Hi All,
+
+      Please check build status
+
+      Richard Idimogu
+      Solution Architect''', subject: 'Jenkins Project Build Status', to: 'richardimog@gmail.com'}
+      
+     }
